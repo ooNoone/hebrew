@@ -1,104 +1,127 @@
-import { player, state, world, triviaPool, battleMusic, winSound, canvas, BLOCK_SIZE, GROUND_Y_PIXELS } from './config.js';
+import { ctx, canvas, player, state, world, BLOCK_SIZE, GROUND_Y_PIXELS, gScale } from './config.js';
 
-export const keys = {};
+export function draw() {
+    // 1. DRAW BACKGROUND (Sky)
+    ctx.fillStyle = "#87CEEB";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-export function setupInputs() {
-    window.addEventListener("keydown", e => {
-        keys[e.code] = true;
+    const bobAmount = Math.sin(player.walkTimer) * (player.isGrounded ? 5 : 0);
+    const camBob = bobAmount * 0.07;
+    const camX = -player.x + canvas.width / 2;
+
+    // 2. DRAW WORLD OBJECTS
+    ctx.save();
+    ctx.translate(camX, camBob); 
+
+    const startX = Math.floor((player.x - canvas.width) / BLOCK_SIZE);
+    const endX = Math.floor((player.x + canvas.width) / BLOCK_SIZE);
+
+    for (let gx = startX; gx < endX; gx++) {
+        for (let gy = 0; gy < 30; gy++) {
+            const block = world.blocks[`${gx},${gy}`];
+            if (block) {
+                ctx.fillStyle = (block === 'dirt') ? "#3d2b1f" : "#757575";
+                ctx.fillRect(gx * BLOCK_SIZE, gy * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                if (block === 'dirt' && gy === Math.floor(GROUND_Y_PIXELS/BLOCK_SIZE) && world.images['grass']) {
+                    const gW = BLOCK_SIZE * gScale;
+                    ctx.drawImage(world.images['grass'], (gx * BLOCK_SIZE) - (gW - BLOCK_SIZE)/2, (gy * BLOCK_SIZE) - 25, gW + 4, 40);
+                }
+            }
+        }
+    }
+
+    world.trees.forEach(t => {
+        const img = world.images[t.type];
+        if (img) ctx.drawImage(img, t.x - (img.width*t.scale)/2, GROUND_Y_PIXELS - (img.height*t.scale*world.anchors[t.type]), img.width*t.scale, img.height*t.scale);
     });
-    window.addEventListener("keyup", e => keys[e.code] = false);
+
+    world.enemies.forEach(en => { if (world.images['book']) ctx.drawImage(world.images['book'], en.x, en.y, en.width, en.height); });
+
+    // Player Stick-man
+    const legSwing = Math.sin(player.walkTimer) * 15, armSwing = Math.cos(player.walkTimer) * 10;
+    ctx.strokeStyle = "#222"; ctx.lineWidth = 4; ctx.fillStyle = "white";
+    ctx.beginPath(); ctx.arc(player.x, player.y - 55, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(player.x, player.y - 47); ctx.lineTo(player.x, player.y - 20); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(player.x, player.y - 20); ctx.lineTo(player.x + legSwing, player.y); 
+    ctx.moveTo(player.x, player.y - 20); ctx.lineTo(player.x - legSwing, player.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(player.x, player.y - 35); ctx.lineTo(player.x + 15, player.y - 35 + (player.swing > 0 ? player.swing : armSwing)); ctx.stroke();
+
+    ctx.restore();
+
+    // 3. UI LAYER (Always on top)
     
-    // Prevent the right-click menu from opening so we can use it for building
-    canvas.addEventListener("contextmenu", e => e.preventDefault());
-    canvas.addEventListener("mousedown", handleMouseDown);
-}
+    // Help Button [?]
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ctx.fillRect(canvas.width - 50, 10, 40, 40);
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(canvas.width - 50, 10, 40, 40);
+    ctx.fillStyle = "white";
+    ctx.font = "bold 24px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("?", canvas.width - 30, 40);
+    ctx.textAlign = "left";
 
-function handleMouseDown(e) {
-    const rect = canvas.getBoundingClientRect();
-    const uiX = e.clientX - rect.left;
-    const uiY = e.clientY - rect.top;
+    // HUD: Score and Lives
+    ctx.fillStyle = "white"; ctx.font = "20px Arial";
+    ctx.textAlign = "right";
+    ctx.fillText(`ניקוד: ${state.score} / ${state.targetScore}`, canvas.width - 20, 80);
+    ctx.textAlign = "left";
+    ctx.font = "24px Arial";
+    ctx.fillText("❤️".repeat(state.lives), 20, 30);
 
-    // 1. UI Interactions
-    if (state.showHelp) { 
-        state.showHelp = false; 
-        return; 
+    // Help Window
+    if (state.showHelp) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.9)"; ctx.fillRect(100, 50, 600, 350);
+        ctx.strokeStyle = "#FFD700"; ctx.lineWidth = 4; ctx.strokeRect(100, 50, 600, 350);
+        ctx.fillStyle = "#FFD700"; ctx.font = "bold 28px Arial"; ctx.textAlign = "center";
+        ctx.fillText("איך משחקים?", 400, 100);
+        ctx.fillStyle = "white"; ctx.font = "18px Arial";
+        const lines = [
+            ":מטרה", ".השג 100 נקודות על ידי פתרון שאלות דקדוק", "", 
+            ":מקשים", "תנועה וקפיצה - WASD או חצים", 
+            "שבירת בלוקים ועצים - קליק שמאלי", "בנייה - קליק ימני",
+            "לחץ על ספרים כדי להתחיל קרב טריוויה"
+        ];
+        lines.forEach((l, i) => ctx.fillText(l, 400, 140 + (i * 25)));
+        ctx.textAlign = "left";
     }
 
-    if (uiX > canvas.width - 50 && uiX < canvas.width - 10 && uiY > 10 && uiY < 50) {
-        state.showHelp = true;
-        return;
-    }
-
-    if (state.gameState === "GAMEOVER" || state.gameState === "VICTORY") {
-        location.reload();
-        return;
-    }
-
-    // 2. Trivia Interactions
+    // Trivia Battle Screen
     if (state.gameState === "TRIVIA") {
+        ctx.fillStyle = "rgba(0, 0, 30, 0.9)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (world.images['book']) ctx.drawImage(world.images['book'], 500, 75, 250, 300);
+        ctx.fillStyle = "#FFD700"; ctx.font = "bold 32px Arial"; ctx.fillText("קרב טריוויה!", 100, 80);
+        ctx.fillStyle = "white"; ctx.font = "20px Arial"; ctx.fillText(state.currentQuestion.q, 100, 140);
         state.currentQuestion.options.forEach((opt, i) => {
             const btnY = 200 + (i * 60);
-            if (uiX > 100 && uiX < 400 && uiY > btnY && uiY < btnY + 45) {
-                if (i === state.currentQuestion.correct) {
-                    world.enemies = world.enemies.filter(en => en !== state.activeEnemy);
-                    state.score += 7;
-                    state.gameState = "CORRECT_FEEDBACK";
-                    state.feedbackTimer = 120;
-                    winSound.play();
-                } else {
-                    state.lives -= 1;
-                    state.gameState = state.lives <= 0 ? "GAMEOVER" : "PLAYING";
-                }
-                battleMusic.pause(); 
-                battleMusic.currentTime = 0;
-            }
+            ctx.fillStyle = "#333"; ctx.fillRect(100, btnY, 300, 45);
+            ctx.fillStyle = "white"; ctx.fillText(opt, 120, btnY + 30);
         });
-        return;
     }
 
-    if (state.gameState === "CORRECT_FEEDBACK") return;
+    // Success Screen
+    if (state.gameState === "CORRECT_FEEDBACK") {
+        ctx.fillStyle = "rgba(0, 50, 0, 0.8)"; ctx.fillRect(150, 150, 500, 150);
+        ctx.strokeStyle = "#00FF00"; ctx.lineWidth = 5; ctx.strokeRect(150, 150, 500, 150);
+        ctx.fillStyle = "white"; ctx.font = "bold 45px Arial"; ctx.textAlign = "center";
+        ctx.fillText("!כל הכבוד", canvas.width / 2, 215); 
+        ctx.font = "24px Arial"; ctx.fillText("תשובה נכונה! קיבלת 7 נקודות", canvas.width / 2, 260);
+        ctx.textAlign = "left";
+    }
 
-    // 3. World Interactions
-    const worldMouseX = uiX + (player.x - canvas.width / 2);
-    const worldMouseY = uiY;
-    player.swing = 15;
+    // Game Over / Victory
+    if (state.gameState === "GAMEOVER") {
+        ctx.fillStyle = "rgba(200, 0, 0, 0.8)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "white"; ctx.font = "bold 50px Arial"; ctx.textAlign = "center";
+        ctx.fillText("המשחק נגמר", canvas.width/2, canvas.height/2);
+        ctx.textAlign = "left";
+    }
 
-    const gx = Math.floor(worldMouseX / BLOCK_SIZE);
-    const gy = Math.floor(worldMouseY / BLOCK_SIZE);
-
-    // LEFT CLICK (0): BREAK BLOCKS, CHOP TREES, START BATTLES
-    if (e.button === 0) {
-        // Break Trees
-        world.trees = world.trees.filter(t => {
-            const img = world.images[t.type];
-            if(!img) return true;
-            const w = img.width * t.scale, h = img.height * t.scale;
-            const treeTop = GROUND_Y_PIXELS - (h * world.anchors[t.type]);
-            if (worldMouseX > t.x - w/2 && worldMouseX < t.x + w/2 && worldMouseY > treeTop && worldMouseY < GROUND_Y_PIXELS) {
-                return false; // Instant break
-            }
-            return true;
-        });
-
-        // Break Blocks
-        if (world.blocks[`${gx},${gy}`]) {
-            delete world.blocks[`${gx},${gy}`];
-        }
-
-        // Start Battle with Books
-        world.enemies.forEach(en => {
-            if (worldMouseX > en.x && worldMouseX < en.x + en.width && worldMouseY > en.y && worldMouseY < en.y + en.height) {
-                state.gameState = "TRIVIA";
-                state.activeEnemy = en;
-                state.currentQuestion = triviaPool[Math.floor(Math.random() * triviaPool.length)];
-                battleMusic.play().catch(() => {});
-            }
-        });
-    } 
-    // RIGHT CLICK (2): BUILD BLOCKS
-    else if (e.button === 2) {
-        if (!world.blocks[`${gx},${gy}`]) {
-            world.blocks[`${gx},${gy}`] = 'dirt';
-        }
+    if (state.gameState === "VICTORY") {
+        ctx.fillStyle = "rgba(255, 215, 0, 0.8)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "black"; ctx.font = "bold 50px Arial"; ctx.textAlign = "center";
+        ctx.fillText("🏆 ניצחון! 🏆", canvas.width/2, canvas.height/2);
+        ctx.textAlign = "left";
     }
 }
