@@ -37,25 +37,18 @@ export function loadAssets(callback) {
         rawImg.src = `sprites/${name}.png`;
         rawImg.onload = () => {
             world.images[name] = processImage(rawImg, name);
-            if (++loadedCount === fileNames.length) {
-                initWorld();
-                callback();
-            }
+            if (++loadedCount === fileNames.length) { initWorld(); callback(); }
         };
         rawImg.onerror = () => { if (++loadedCount === fileNames.length) { initWorld(); callback(); }};
     });
 }
 
 function initWorld() {
-    // Generate Initial Ground
+    const gyTop = Math.floor(GROUND_Y_PIXELS / BLOCK_SIZE);
     for (let x = -100; x < 500; x++) {
-        const gyTop = Math.floor(GROUND_Y_PIXELS / BLOCK_SIZE);
         world.blocks[`${x},${gyTop}`] = 'dirt';
-        for (let y = 1; y < 10; y++) {
-            world.blocks[`${x},${gyTop + y}`] = 'stone';
-        }
+        for (let y = 1; y < 10; y++) world.blocks[`${x},${gyTop + y}`] = 'stone';
     }
-    // Trees and Enemies
     for(let i = -50; i < 200; i++) {
         if(seededRandom(i) > 0.85) {
             const types = ['tree_medium', 'pine', 'tree_lush', 'tree_puffy', 'tree_round'];
@@ -68,7 +61,7 @@ function initWorld() {
         if(seededRandom(i + 1000) > 0.96) {
             world.enemies.push({
                 x: i * 250, y: GROUND_Y_PIXELS - 100, width: 80, height: 100,
-                speed: 1.2, direction: 1, hp: 2, startX: i * 250, range: 150
+                speed: 1.2, direction: 1, startX: i * 250, range: 150
             });
         }
     }
