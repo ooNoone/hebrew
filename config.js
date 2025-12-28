@@ -77,17 +77,14 @@ export const triviaPool = [
     { q: "במשפט 'הכוכב המנצנץ בשמיים' - מהו התואר?", options: ["הכוכב", "המנצנץ", "בשמיים"], correct: 1 }
 ];
 
+// config.js changes
 export const player = {
     x: 400, y: 100, width: 20, 
     velocityX: 0, velocityY: 0,
     speed: 4.5, jumpForce: -13, gravity: 0.7,
     isGrounded: false,
-    inventory: { wood: 0, stone: 0, dirt: 0, axe: false, pickaxe: false, trophy: 0 },
-    showInventory: false,
-    selectedSlot: 0,
-    hotbar: ["יד", "גרזן", "מכוש", "אדמה"],
     swing: 0,
     walkTimer: 0 
+    // Removed inventory and hotbar properties
 };
-
 export const world = { blocks: {}, trees: [], enemies: [], images: {}, anchors: {} };
