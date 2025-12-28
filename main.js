@@ -10,9 +10,9 @@ function update() {
         return;
     }
 
-    if (state.gameState !== "PLAYING") return;
+    if (state.gameState !== "PLAYING" || state.showHelp) return;
 
-    // --- INFINITE GROUND GENERATION ---
+    // INFINITE WORLD
     const playerGX = Math.floor(player.x / BLOCK_SIZE);
     for (let x = playerGX - 20; x < playerGX + 20; x++) {
         const gyTop = Math.floor(GROUND_Y_PIXELS / BLOCK_SIZE);
@@ -22,13 +22,9 @@ function update() {
         }
     }
 
-    let moving = false;
-    if (keys["KeyA"] || keys["ArrowLeft"]) { player.velocityX = -player.speed; moving = true; }
-    else if (keys["KeyD"] || keys["ArrowRight"]) { player.velocityX = player.speed; moving = true; }
-    else player.velocityX *= 0.8;
-
-    if (moving && player.isGrounded) player.walkTimer += 0.15;
-    else player.walkTimer = 0;
+    if (keys["KeyA"] || keys["ArrowLeft"]) { player.velocityX = -player.speed; player.walkTimer += 0.15; }
+    else if (keys["KeyD"] || keys["ArrowRight"]) { player.velocityX = player.speed; player.walkTimer += 0.15; }
+    else { player.velocityX *= 0.8; player.walkTimer = 0; }
 
     world.enemies.forEach(en => {
         en.x += en.speed * en.direction;
@@ -37,11 +33,8 @@ function update() {
 
     player.velocityY += player.gravity;
     if (player.swing > 0) player.swing--;
+    player.x += player.velocityX; player.y += player.velocityY;
 
-    player.x += player.velocityX;
-    player.y += player.velocityY;
-
-    // Robust Ground Collision
     if (player.y > GROUND_Y_PIXELS) { player.y = GROUND_Y_PIXELS; player.velocityY = 0; player.isGrounded = true; }
     else player.isGrounded = false;
 
@@ -50,7 +43,4 @@ function update() {
 
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
 
-loadAssets(() => {
-    setupInputs();
-    gameLoop();
-});
+loadAssets(() => { setupInputs(); gameLoop(); });
