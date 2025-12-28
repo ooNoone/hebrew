@@ -1,7 +1,7 @@
 import { ctx, canvas, player, state, world, BLOCK_SIZE, GROUND_Y_PIXELS, gScale } from './config.js';
 
 export function draw() {
-    // 1. DRAW BACKGROUND FIRST (So it doesn't cover the UI)
+    // 1. DRAW BACKGROUND (Sky)
     ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -37,7 +37,7 @@ export function draw() {
 
     world.enemies.forEach(en => { if (world.images['book']) ctx.drawImage(world.images['book'], en.x, en.y, en.width, en.height); });
 
-    // Player drawing
+    // Player Stick-man
     const legSwing = Math.sin(player.walkTimer) * 15, armSwing = Math.cos(player.walkTimer) * 10;
     ctx.strokeStyle = "#222"; ctx.lineWidth = 4; ctx.fillStyle = "white";
     ctx.beginPath(); ctx.arc(player.x, player.y - 55, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -48,7 +48,7 @@ export function draw() {
 
     ctx.restore();
 
-    // 3. DRAW UI ELEMENTS LAST (So they are always on top)
+    // 3. UI LAYER (Always on top)
     
     // Help Button [?]
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
@@ -62,42 +62,32 @@ export function draw() {
     ctx.fillText("?", canvas.width - 30, 40);
     ctx.textAlign = "left";
 
-    // Score and Lives
+    // HUD: Score and Lives
     ctx.fillStyle = "white"; ctx.font = "20px Arial";
     ctx.textAlign = "right";
-    ctx.fillText(`ניקוד: ${state.score} / ${state.targetScore}`, canvas.width - 20, 80); // Adjusted Y so it doesn't hit the button
+    ctx.fillText(`ניקוד: ${state.score} / ${state.targetScore}`, canvas.width - 20, 80);
     ctx.textAlign = "left";
     ctx.font = "24px Arial";
     ctx.fillText("❤️".repeat(state.lives), 20, 30);
-    ctx.fillStyle = "gold";
-    ctx.fillText(`גביעים: 🏆 x ${player.inventory.trophy}`, 20, 430);
 
     // Help Window
     if (state.showHelp) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
-        ctx.fillRect(100, 50, 600, 350);
-        ctx.strokeStyle = "#FFD700";
-        ctx.lineWidth = 4;
-        ctx.strokeRect(100, 50, 600, 350);
-        ctx.fillStyle = "#FFD700";
-        ctx.font = "bold 28px Arial";
-        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.9)"; ctx.fillRect(100, 50, 600, 350);
+        ctx.strokeStyle = "#FFD700"; ctx.lineWidth = 4; ctx.strokeRect(100, 50, 600, 350);
+        ctx.fillStyle = "#FFD700"; ctx.font = "bold 28px Arial"; ctx.textAlign = "center";
         ctx.fillText("איך משחקים?", 400, 100);
-        ctx.fillStyle = "white";
-        ctx.font = "18px Arial";
-        const instructions = [
-            ":מטרה", "להשיג 100 נקודות על ידי ניצחון בקרבות נגד ספרים", "",
-            ":מקשים", "תנועה וקפיצה - (WASD) או חצים", "בשביל לפתוח את התפריט (מלאי) - Tab",
-            "החלפת כלים - מספרים 1-4", "חציבה/תקיפה/בנייה - לחיצה עם העכבר", "",
-            ":איך להילחם", "בשביל להכנס לקרב צריך ללחוץ על הספרים המרחפים",
-            ".תשובה נכונה מעניקה נקודות, טעות מורידה חיים", "",
-            "!ללחוץ בכל מקום כדי לסגור"
+        ctx.fillStyle = "white"; ctx.font = "18px Arial";
+        const lines = [
+            ":מטרה", ".השג 100 נקודות על ידי פתרון שאלות דקדוק", "", 
+            ":מקשים", "תנועה וקפיצה - WASD או חצים", 
+            "שבירת בלוקים ועצים - קליק שמאלי", "בנייה - קליק ימני",
+            "לחץ על ספרים כדי להתחיל קרב טריוויה"
         ];
-        instructions.forEach((line, i) => ctx.fillText(line, 400, 140 + (i * 22)));
+        lines.forEach((l, i) => ctx.fillText(l, 400, 140 + (i * 25)));
         ctx.textAlign = "left";
     }
 
-    // Battle, Victory, Gameover, and Hotbar logic...
+    // Trivia Battle Screen
     if (state.gameState === "TRIVIA") {
         ctx.fillStyle = "rgba(0, 0, 30, 0.9)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
         if (world.images['book']) ctx.drawImage(world.images['book'], 500, 75, 250, 300);
@@ -110,10 +100,28 @@ export function draw() {
         });
     }
 
-    // (Include the rest of your original state checks: CORRECT_FEEDBACK, GAMEOVER, VICTORY, PLAYING/HOTBAR, INVENTORY)
-    if (state.gameState === "CORRECT_FEEDBACK") { /* ... as in your original ... */ }
-    if (state.gameState === "GAMEOVER") { /* ... as in your original ... */ }
-    if (state.gameState === "VICTORY") { /* ... as in your original ... */ }
-    if (state.gameState === "PLAYING") { /* ... as in your original ... */ }
-    if (player.showInventory && state.gameState === "PLAYING") { /* ... as in your original ... */ }
+    // Success Screen
+    if (state.gameState === "CORRECT_FEEDBACK") {
+        ctx.fillStyle = "rgba(0, 50, 0, 0.8)"; ctx.fillRect(150, 150, 500, 150);
+        ctx.strokeStyle = "#00FF00"; ctx.lineWidth = 5; ctx.strokeRect(150, 150, 500, 150);
+        ctx.fillStyle = "white"; ctx.font = "bold 45px Arial"; ctx.textAlign = "center";
+        ctx.fillText("!כל הכבוד", canvas.width / 2, 215); 
+        ctx.font = "24px Arial"; ctx.fillText("תשובה נכונה! קיבלת 7 נקודות", canvas.width / 2, 260);
+        ctx.textAlign = "left";
+    }
+
+    // Game Over / Victory
+    if (state.gameState === "GAMEOVER") {
+        ctx.fillStyle = "rgba(200, 0, 0, 0.8)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "white"; ctx.font = "bold 50px Arial"; ctx.textAlign = "center";
+        ctx.fillText("המשחק נגמר", canvas.width/2, canvas.height/2);
+        ctx.textAlign = "left";
+    }
+
+    if (state.gameState === "VICTORY") {
+        ctx.fillStyle = "rgba(255, 215, 0, 0.8)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "black"; ctx.font = "bold 50px Arial"; ctx.textAlign = "center";
+        ctx.fillText("🏆 ניצחון! 🏆", canvas.width/2, canvas.height/2);
+        ctx.textAlign = "left";
+    }
 }
